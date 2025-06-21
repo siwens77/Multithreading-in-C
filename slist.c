@@ -21,7 +21,7 @@ list_t* l_init(int c){
     return lst;//creating list
 } 
 
-void l_destroy(list_t *lst){ //DONE
+void l_destroy(list_t *lst){
 
     pthread_mutex_lock(&lst->lock);
     if (lst->size == 0){
@@ -30,18 +30,18 @@ void l_destroy(list_t *lst){ //DONE
         pthread_cond_destroy(&lst->not_full);
         pthread_cond_destroy(&lst->not_empty);
         free(lst);
-    } //case if list is empty
+    } 
     else {
         while (lst->head){
             Node* curr = lst->head;
-            if (curr != lst->tail){ //until reaching end
-                lst->head = lst->head->next; //moving forward
-                lst->head->prev = NULL; //deleting previous
+            if (curr != lst->tail){
+                lst->head = lst->head->next;
+                lst->head->prev = NULL;
             } else {
                 lst->head = NULL;
                 lst->tail = NULL;
             }
-            free(curr); //freeing pointer and head and tail
+            free(curr);
         }
         pthread_mutex_unlock(&lst->lock);
         pthread_mutex_destroy(&lst->lock);
@@ -51,49 +51,49 @@ void l_destroy(list_t *lst){ //DONE
     }
 }
 
-void l_add(list_t *lst, char *str){//DONE
+void l_add(list_t *lst, char *str){
     
-    pthread_mutex_lock(&lst->lock);//lock mutex
-    while(lst->size >=lst->c){//cannot add, as long as it leaks
-        pthread_cond_wait(&lst-> not_full,&lst-> lock);//wait until you can work
+    pthread_mutex_lock(&lst->lock);
+    while(lst->size >=lst->c){
+        pthread_cond_wait(&lst-> not_full,&lst-> lock);
     }
 
     Node* new_node = (Node*)malloc(sizeof(Node));
-    new_node->str = str;//new node with string
+    new_node->str = str;
 
     if (lst->size == 0){
         lst->head = new_node;
         lst->tail = new_node;
         new_node->prev=NULL;
         new_node->next=NULL;
-    }//creating node if empty list
-
-    else if(strcmp(str, lst->tail->str) >= 0){//checking if string new tail
-        new_node->next= NULL;//clearing next in new tail
-        new_node->prev = lst->tail;//A -> B
-        lst->tail->next = new_node;//A <-> B
-        lst->tail = new_node;// tail == A
     }
-    else if(strcmp(str, lst->head->str) <= 0){//checking if string is new head
-        new_node->prev = NULL;//clearing previous in new for safety
-        new_node->next = lst->head;//A -> B
-        lst->head->prev = new_node;//A <-> B
-        lst->head = new_node;//head == A
+
+    else if(strcmp(str, lst->tail->str) >= 0){
+        new_node->next= NULL;
+        new_node->prev = lst->tail;
+        lst->tail->next = new_node;
+        lst->tail = new_node;
+    }
+    else if(strcmp(str, lst->head->str) <= 0){
+        new_node->prev = NULL;
+        new_node->next = lst->head;
+        lst->head->prev = new_node;
+        lst->head = new_node;
     }
     else{
-        Node* curr = lst->head->next; //string between head and tail
+        Node* curr = lst->head->next; 
         while (curr){
-            if (strcmp(str, curr->str) <= 0){//place found
-                new_node->next = curr;//new->curr
-                curr->prev->next = new_node;//before->new
-                new_node->prev = curr->prev;//before<->new
-                curr->prev = new_node;//new<->curr
+            if (strcmp(str, curr->str) <= 0){
+                new_node->next = curr;
+                curr->prev->next = new_node;
+                new_node->prev = curr->prev;
+                curr->prev = new_node;
                 break;
             }
-            curr = curr->next;//moving forward
+            curr = curr->next;
         }
     }
-    lst->size++;//increasing size of the list
+    lst->size++;
 
     pthread_cond_signal(&lst->not_empty);
     pthread_mutex_unlock(&lst->lock);
@@ -101,52 +101,25 @@ void l_add(list_t *lst, char *str){//DONE
 
 }
 
-char* l_get(list_t *lst){//DONE
+char* l_get(list_t *lst){
 
     pthread_mutex_lock(&lst->lock);
     while(lst->size == 0){
-        pthread_cond_wait(&lst-> not_empty,&lst-> lock);//wait until you can work
+        pthread_cond_wait(&lst-> not_empty,&lst-> lock);
     }
 
     Node *temp = lst->head;
-    if(lst->head != lst->tail){//case if more than 1
-        lst->head = lst->head->next;//new head in list
+    if(lst->head != lst->tail){
+        lst->head = lst->head->next;
         if (lst->head){
             lst->head->prev = NULL;
         }
-    }else{//just clear the list
+    }else{
         lst->head = NULL;
         lst->tail = NULL;
     }
     char *str = temp->str;
-    free(temp);//freeing
-    lst->size--;//decreasing int size
-
-    pthread_cond_signal(&lst-> not_full);
-    pthread_mutex_unlock(&lst->lock);
-
-    return str;
-}
-
-char* l_pop(list_t *lst){//DONE
-
-    pthread_mutex_lock(&lst->lock);
-    while(lst->size == 0){
-        pthread_cond_wait(&lst-> not_empty,&lst-> lock);//wait until you can work
-    }
-
-    Node *temp = lst->tail;
-    if (lst->head != lst->tail){//if more than 1 element
-        lst->tail = lst->tail->prev;//moving tail back
-        if (lst->tail){
-            lst->tail->next = NULL;//tail->NULL
-        }
-    }else{//just clearing the list
-        lst->head = NULL;
-        lst->tail = NULL;
-    }
-    char *str = temp->str;
-    free(temp);//freeing temporary
+    free(temp);
     lst->size--;
 
     pthread_cond_signal(&lst-> not_full);
@@ -155,78 +128,101 @@ char* l_pop(list_t *lst){//DONE
     return str;
 }
 
-int l_remove(list_t *lst, char *str){//DONE
+char* l_pop(list_t *lst){
+
+    pthread_mutex_lock(&lst->lock);
+    while(lst->size == 0){
+        pthread_cond_wait(&lst-> not_empty,&lst-> lock);
+    }
+
+    Node *temp = lst->tail;
+    if (lst->head != lst->tail){
+        lst->tail = lst->tail->prev;
+        if (lst->tail){
+            lst->tail->next = NULL;
+        }
+    }else{
+        lst->head = NULL;
+        lst->tail = NULL;
+    }
+    char *str = temp->str;
+    free(temp);
+    lst->size--;
+
+    pthread_cond_signal(&lst-> not_full);
+    pthread_mutex_unlock(&lst->lock);
+
+    return str;
+}
+
+int l_remove(list_t *lst, char *str){
     pthread_mutex_lock(&lst->lock);
     if (lst->size == 0){
         printf("LIST IS EMPTY(error in l_remove)\n");
         pthread_mutex_unlock(&lst->lock);
         return 1;
     }
-    if(lst->size == 1){//only one element
-        if(lst->head->str == str){//comparing pointers
+    if(lst->size == 1){
+        if(lst->head->str == str){
             Node* temp = lst->head;
             lst->head = NULL;
             lst->tail = NULL;
             free(temp);
             lst->size--;
             pthread_mutex_unlock(&lst->lock);
-            return 0;//worked!
+            return 0;
         }else{
-            printf("STRING NOT FOUND! RETURNING 1\n");
+            printf("STRING NOT FOUND! RETURN 1\n");
             pthread_mutex_unlock(&lst->lock);
             return 1;          
         }
     }
 
-    if (lst->head->str == str){//if head is an answer
+    if (lst->head->str == str){
         Node* temp = lst->head;
         lst->head = lst->head->next;
-        lst->head->prev = NULL;//removing head
+        lst->head->prev = NULL;
         free(temp);
-        lst->size--;//decreasing size of list
-        printf("REMOVED HEAD\n");
+        lst->size--;
         pthread_mutex_unlock(&lst->lock);
         return 0;   
     }
-    else if (lst->tail->str == str){//if tail is an answer
+    else if (lst->tail->str == str){
         Node* temp = lst->tail;
         lst->tail = lst->tail->prev;
-        lst->tail->next = NULL;//removing last
+        lst->tail->next = NULL;
         free(temp);
         lst->size--;
-        printf("l_remove found at tail\n");
         pthread_mutex_unlock(&lst->lock);
         return 0;   
-    }else{//normal case
+    }else{
         Node* curr = lst->head;
         while (curr){
-            if (curr->str == str){//if found
+            if (curr->str == str){
                 curr->prev->next = curr->next;
-                curr->next->prev = curr->prev;//deleting
+                curr->next->prev = curr->prev;
                 free(curr);
-                lst->size--;//decreasing
-                printf("l_remove found\n");
+                lst->size--;
                 pthread_mutex_unlock(&lst->lock);
                 return 0;
             }
             curr = curr->next;
         }
     }
-    printf("NOT FOUND?\n"); 
     pthread_mutex_unlock(&lst->lock);
     return 1;
 }
 
-int l_count(list_t *lst){//DONE
-    pthread_mutex_lock(&lst->lock);//locking list
+int l_count(list_t *lst){
+    pthread_mutex_lock(&lst->lock);
     int count;
     count = lst->size;
-    printf("NUMBER OF STRINGS IN LIST %d\n", count);//must work no edge cases
-    pthread_mutex_unlock(&lst->lock);//unlocking list
-    return count;//returning size
+    printf("NUMBER OF STRINGS IN LIST: %d\n", count);
+    pthread_mutex_unlock(&lst->lock);
+    return count;
 }
 
-void l_setcapacity(list_t *lst, int c){//DONE
+void l_setcapacity(list_t *lst, int c){
     pthread_mutex_lock(&lst->lock);
     lst->c = c;
     if (lst->size >= lst->c){
@@ -236,15 +232,12 @@ void l_setcapacity(list_t *lst, int c){//DONE
     pthread_mutex_unlock(&lst->lock);
 }
 
-void l_remove_duplicates(list_t *lst){//DONE
+void l_remove_duplicates(list_t *lst){
     pthread_mutex_lock(&lst->lock);
-    if (lst->size < 2){
-        printf("LIST SMALLER THAN 2, NO DUPLICATES \n");
-    }
 
     Node* curr = lst->head;
-    while (curr != lst->tail){//until too far
-        if (strcmp(curr->str, curr->next->str) == 0){//if the same
+    while (curr != lst->tail){
+        if (strcmp(curr->str, curr->next->str) == 0){
             if(curr->next != lst->tail){
                 Node* temp = curr->next;
                 curr->next = curr->next->next;
@@ -258,25 +251,25 @@ void l_remove_duplicates(list_t *lst){//DONE
                 free(temp);
             }
         }else{
-            curr = curr->next;//moving forward only if not duplicate
+            curr = curr->next;
         }
     }
     pthread_mutex_unlock(&lst->lock);
 }
 
-void l_join(list_t *lst1, list_t *lst2){//DONE
+void l_join(list_t *lst1, list_t *lst2){
     pthread_mutex_lock(&lst1->lock);
     pthread_mutex_lock(&lst2->lock);
     int temp_c = lst1->c;
-    l_setcapacity(lst1, lst1->c + lst2->size);//new capacity
+    l_setcapacity(lst1, lst1->c + lst2->size);
     while(lst2->head){
-        l_add(lst1, lst2->head->str);//adding head 
-        if(lst2->head != lst2->tail){//if not last one
+        l_add(lst1, lst2->head->str);
+        if(lst2->head != lst2->tail){
             Node* temp= lst2->head;
             lst2->head->next->prev = NULL;
             lst2->head = lst2->head->next;
             free(temp);
-        }else{//ending if over
+        }else{
             Node *temp = lst2->head;
             lst2->head = NULL;
             lst2->tail = NULL;
@@ -284,47 +277,47 @@ void l_join(list_t *lst1, list_t *lst2){//DONE
         }
         lst2->size--;
     }
-    l_setcapacity(lst1, temp_c);//updating capacity
+    l_setcapacity(lst1, temp_c);
     pthread_mutex_unlock(&lst1->lock);
     pthread_mutex_unlock(&lst2->lock);
 }
 
-void l_clear(list_t *lst){//DONE
+void l_clear(list_t *lst){
     pthread_mutex_lock(&lst->lock);
     if(lst->size == 0){
-        printf("LIST EMPTY ALREADY\n");//case if list empty
+        pass;
     }else{
         while(lst->head){ 
             Node* curr = lst->head;
-            if(curr!=lst->tail){//if not the end
-                lst->head = lst->head->next;//move forward
+            if(curr!=lst->tail){
+                lst->head = lst->head->next;
                 lst->head->prev = NULL;
-            }else{//if end
-                lst->head = NULL;//clear
+            }else{
+                lst->head = NULL;
                 lst->tail = NULL;
             }
             free(curr);
-            lst->size--;//decrease size
+            lst->size--;
             printf("%d\n", lst->size);
         }
     }
     pthread_mutex_unlock(&lst->lock);
 }
 
-void l_print(list_t *lst){//DONE
+void l_print(list_t *lst){
     pthread_mutex_lock(&lst->lock);
     if (lst->size == 0){
         printf("SIZE IS ZERO! (error in l_print)\n");
         pthread_mutex_unlock(&lst->lock);
         return;
     }else{
-        printf("NULL-");//before head
+        printf("NULL-");
         Node* curr = lst->head;
-        while(curr){//move forward
-            printf("%s-", curr->str);//print next and next...
+        while(curr){
+            printf("%s-", curr->str);
             curr = curr->next;
         }
-        printf("NULL\n");//after tail
+        printf("NULL\n");
     }
     pthread_mutex_unlock(&lst->lock);
 }
