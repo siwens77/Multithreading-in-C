@@ -16,7 +16,7 @@ void* producer(void* arg) {
 }
 
 
-void* consumer(void* arg){//thread function to get strings from the list
+void* consumer(void* arg){
     list_t* lst =(list_t*)arg;
     for(int i = 0; i < 5; i++){
         char* str = l_get(lst);
@@ -31,23 +31,23 @@ void* consumer(void* arg){//thread function to get strings from the list
 int main(){
 
     list_t* list1 = l_init(5);
-    list_t* list2 = l_init(5);//two lists with capacity 5
-    pthread_t prod_thread1, prod_thread2, cons_thread1, cons_thread2;//initializing threads
+    list_t* list2 = l_init(5);
+    pthread_t prod_thread1, prod_thread2, cons_thread1, cons_thread2;
 
     pthread_create(&prod_thread1, NULL, producer, list1);
-    pthread_create(&cons_thread1, NULL, consumer, list1);//creating threads for list1
+    pthread_create(&cons_thread1, NULL, consumer, list1);
 
     pthread_create(&prod_thread2, NULL, producer, list2);
-    pthread_create(&cons_thread2, NULL, consumer, list2);//creating threads for list2
+    pthread_create(&cons_thread2, NULL, consumer, list2);
 
     pthread_join(prod_thread1, NULL);
     pthread_join(cons_thread1, NULL);
     pthread_join(prod_thread2, NULL);
-    pthread_join(cons_thread2, NULL);//waiting for termulation
+    pthread_join(cons_thread2, NULL);
 
 
     l_destroy(list1);
-    l_destroy(list2);//deastroing lists
+    l_destroy(list2);
 
     return 0;
 }
